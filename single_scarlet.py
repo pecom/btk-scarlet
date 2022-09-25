@@ -128,10 +128,10 @@ def scarlet_getsources(image, centers, psfs, bands, indx=3):
                                                            thresh=1,
                                                            fallback=True,
                                                            silent=True,
-                                                           set_spectra=True
+                                                           set_spectra=False
                                                           )
 
-    scarlet.initialization.set_spectra_to_match(sources, observation)
+#     scarlet.initialization.set_spectra_to_match(sources, observation)
     blend = scarlet.Blend(sources, observation)
     it, logL = blend.fit(100, e_rel=1e-4)
     # Compute model
@@ -158,12 +158,9 @@ def pair_pipeline(im, blist, psfs, iso):
     all_centers, _, sep_segmap = get_center(im)
     sep_measure = sep_process(im, all_centers, sep_segmap)
     sc, res, mod, obs = scarlet_getsources(im, all_centers, psfs, bands)
-#    sc_iso, _, _, _ = scarlet_getsources(iso, all_centers, psfs, bands)
     sf, btk_f = comp_flux(iso, sc, blist)
-#    sf_iso, _ = comp_flux(iso, sc_iso, blist)
 
     return sf, btk_f
-#    return sf, btk_f, sf_iso
 
 def compute_flux(svy, batch, blen=10):
     psfs = []
@@ -176,7 +173,6 @@ def compute_flux(svy, batch, blen=10):
     
     sf_fluxes = []
     btk_fluxes = []
-    sf_isofluxes = []
 
     for bl in range(blen):
         sf, btk_f = pair_pipeline(batch['blend_images'][bl], batch['blend_list'][bl], psfs, batch['isolated_images'][bl])
@@ -263,7 +259,7 @@ def main(shift=4, saveFiles=True, verbose=False):
     bands = list('ugrizy')
     catalog_name = "../data/blending/sample_input_catalog.fits"
     stamp_size = 24
-    bsize = 10
+    bsize = 5
     surveys = btk.survey.get_surveys("Rubin")
 
     catalog = btk.catalog.CatsimCatalog.from_file(catalog_name)
@@ -304,11 +300,7 @@ def main(shift=4, saveFiles=True, verbose=False):
     # zerop_expo = np.array([f.exp_time for f in surveys.filters])
     true_flux = lsst_mags_adu(true_mags, bands)
     multi_true = [true_flux for i in range(bsize)]
-    print("True | scarlet | ratio ", true_flux, sf_fluxes, sf_fluxes[0]/true_flux)
-    print("Normalized flux", sf_fluxes[0]/sf_fluxes[0][0], true_flux/true_flux[0])
     ratio, errs = compare_flux(sf_fluxes, multi_true)
-    
-
 
     if saveFiles:
         outdir = '../output/single/'
@@ -320,14 +312,12 @@ def main(shift=4, saveFiles=True, verbose=False):
         np.save(f'{outdir}ratios.npy', ratio)
         np.save(f'{outdir}errs.npy', errs)
 
-
     # fdata = [sf_m[1], sep_m[1], cf_m[1]]
     # plot_fit(fdata, 'single_blendtest.jpeg')
     # plot_blend(blendedness[1], 'single_blendednesstest.jpeg')
     return ratio, errs
 
 allshifts = np.array([ 0,  6, 21, 24, 36, 38, 43, 54, 61, 76, 87, 96, 98])
-
 all_ratios = np.zeros((len(allshifts), 6))
 all_errs = np.zeros_like(all_ratios)
 for i, sft in enumerate(allshifts):
@@ -335,10 +325,9 @@ for i, sft in enumerate(allshifts):
     r, e = main(sft)
     all_ratios[i,:] = r
     all_errs[i,:] = e
-    break
 
-sys.exit()
-suffix = 2
+# sys.exit()
+suffix = "nospectra"
 np.save(f'../output/single/allratios_{suffix}.npy', all_ratios)
 np.save(f'../output/single/allerrs_{suffix}.npy', all_errs)
 
