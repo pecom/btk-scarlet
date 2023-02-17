@@ -198,7 +198,7 @@ class SingleDeblend():
                                                                centers,
                                                                observation,
                                                                max_components=2,
-                                                               min_snr=50,
+                                                               min_snr=5,
                                                                thresh=1,
                                                                fallback=True,
                                                                silent=True,
@@ -290,11 +290,24 @@ class MultiDeblend(SingleDeblend):
             
             return new_coords
 
-def get_psfs(svy, im_shape):
+def get_psfs(svy, im_shape, bd='ugrizy'):
     psfs = []
-    pixscale = svy.pixel_scale
-    for fp in svy.filters:
-        psfs.append(fp.psf.drawImage(galsim.Image(*im_shape), scale=pixscale).array)
+    filts = [svy.get_filter(b) for b in bd]
+    pixscale = svy.pixel_scale.to_value('arcsec')
+    for fp in filts:
+        fwhm = fp.psf_fwhm.to_value("arcsec")
+        atmos_psf = galsim.Kolmogorov(fwhm=fwhm)
+
+        effective_wavelength = fp.effective_wavelength.to_value("angstrom")
+        obscuration = svy.obscuration.value
+        mirror_diameter = svy.mirror_diameter.to_value("m")
+        lam_over_diam = 3600 * np.degrees(1e-10 * effective_wavelength / mirror_diameter)
+        optical_psf_model = galsim.Airy(lam_over_diam=lam_over_diam, obscuration=obscuration)
+
+        fin_psf = galsim.Convolve(atmos_psf, optical_psf_model)
+
+        psfs.append(fin_psf.drawImage(nx=im_shape[0], ny=im_shape[1], scale=pixscale).array)
+        # psfs.append(fin_psf.drawImage(galsim.Image(*im_shape), scale=pixscale).array)
     psfs = np.array(psfs)
 
     return psfs
@@ -315,10 +328,10 @@ def compare_flux(solved, true):
     return ratios, err
 
 def main_single(df, shift=4, saveFiles=True, verbose=False):
-    catalog_name = "../data/blending/sample_input_catalog.fits"
+    catalog_name = "../data/sample_input_catalog.fits"
     stamp_size = 24
     bsize = 10
-    surveys = btk.survey.get_surveys("Rubin")
+    surveys = btk.survey.get_surveys("LSST")
     bands = list('ugrizy')
 
     catalog = btk.catalog.CatsimCatalog.from_file(catalog_name)
@@ -370,10 +383,10 @@ def main_single(df, shift=4, saveFiles=True, verbose=False):
     return 1
 
 def main_double(df, shift=4, saveFiles=True, verbose=False):
-    catalog_name = "../data/blending/sample_input_catalog.fits"
+    catalog_name = "../data/sample_input_catalog.fits"
     stamp_size = 24
     bsize = 10
-    surveys = btk.survey.get_surveys("Rubin")
+    surveys = btk.survey.get_surveys("LSST")
     bands = list('ugrizy')
 
     catalog = btk.catalog.CatsimCatalog.from_file(catalog_name)
@@ -423,8 +436,9 @@ def main_double(df, shift=4, saveFiles=True, verbose=False):
 
     return 1
 if __name__ == "__main__":
-    allshifts = np.array([ 0,  6, 21, 24, 36, 38, 43, 54, 61, 76, 87, 96, 98])
+    # allshifts = np.array([ 0,  6, 21, 24, 36, 38, 43, 54, 61, 76, 87, 96, 98])
     allshifts = np.array([ 0,  6, 21, 24, 36, 38])
+    # allshifts = np.array([88,75,56,41,49,77])
     lalls = len(allshifts)
     all_ratios = np.zeros((lalls, 6))
     all_errs = np.zeros_like(all_ratios)
@@ -444,10 +458,10 @@ if __name__ == "__main__":
 
     # remove(all_trues)
     # remove("sys exit now")
-    prefix = "bkgsub_spectra_"
+    prefix = "testSNR5_bkgsub_spectra_"
     fullframe_solo = pd.DataFrame(data=dframe_solo)
-    fullframe_solo.to_pickle(f'../output/single/{prefix}pandaframe_solo.pkl')
+    fullframe_solo.to_pickle(f'../output/{prefix}pandaframe_solo.pkl')
 
     # fullframe_double = pd.DataFrame(data=dframe_double)
-    # fullframe_double.to_pickle(f'../output/single/{prefix}pandaframe_double.pkl')
+    # fullframe_double.to_pickle(f'../output/{prefix}pandaframe_double.pkl')
 
