@@ -74,6 +74,7 @@ def scarlet_deblend(image, bkg_sub=True, rms_est = 10):
 	#     scarlet.initialization.set_spectra_to_match(sources, observation)
 	blend = scarlet.Blend(sources, observation)
 	it, logL = blend.fit(1000, e_rel=1e-4)
+    print(f"{logL} after {it} iterations")
 	# Compute model
 	model = blend.get_model()
 	# Render it in the observed frame
