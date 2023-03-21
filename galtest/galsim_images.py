@@ -33,20 +33,25 @@ def sep_detect(im):
 	return cata
 
 
-def scarlet_deblend(image):
-	centers = np.array([[66,66]])
-	model_psf = scarlet.GaussianPSF(sigma=.8)
-	model_frame = scarlet.Frame(
-	    image.shape,
-	    psf=model_psf,
-	    channels=list('i'))
-	rms_s = np.zeros(len(image))
-	img_sub = np.zeros_like(image)
+def scarlet_deblend(image, bkg_sub=True, rms_est = 10):
+    centers = np.array([[66,66]])
+    model_psf = scarlet.GaussianPSF(sigma=.8)
+    model_frame = scarlet.Frame(
+        image.shape,
+        psf=model_psf,
+        channels=list('i'))
+    rms_s = np.zeros(len(image))
+    img_sub = np.zeros_like(image)
 
-	for i, im in enumerate(image):
-		bkg = sep.Background(im)
-		img_sub[i] = im - bkg
-		rms_s[i] = bkg.globalrms
+    if bkg_sub:
+        for i, im in enumerate(image):
+            bkg = sep.Background(im)
+            img_sub[i] = im - bkg
+            rms_s[i] = bkg.globalrms
+    else:
+        for i,im in enumerate(image):
+            img_sub[i] = im
+            rms_s[i] = rms_est
 
 	observation = scarlet.Observation(
 	    img_sub,
