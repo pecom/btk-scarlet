@@ -33,31 +33,31 @@ def sep_detect(im):
 	return cata
 
 
-def scarlet_deblend(image, bkg_sub=True, rms_est = 10):
-    centers = np.array([[66,66]])
-    model_psf = scarlet.GaussianPSF(sigma=.8)
-    model_frame = scarlet.Frame(
-        image.shape,
-        psf=model_psf,
-        channels=list('i'))
-    rms_s = np.zeros(len(image))
-    img_sub = np.zeros_like(image)
+def scarlet_deblend(image, bkg_sub=True, rms_est = 10, verbose=False):
+	centers = np.array([[66,66]])
+	model_psf = scarlet.GaussianPSF(sigma=.8)
+	model_frame = scarlet.Frame(
+	image.shape,
+	psf=model_psf,
+	channels=list('i'))
+	rms_s = np.zeros(len(image))
+	img_sub = np.zeros_like(image)
 
-    if bkg_sub:
-        for i, im in enumerate(image):
-            bkg = sep.Background(im)
-            img_sub[i] = im - bkg
-            rms_s[i] = bkg.globalrms
-    else:
-        for i,im in enumerate(image):
-            img_sub[i] = im
-            rms_s[i] = rms_est
+	if bkg_sub:
+		for i, im in enumerate(image):
+			bkg = sep.Background(im)
+			img_sub[i] = im - bkg
+			rms_s[i] = bkg.globalrms
+	else:
+		for i,im in enumerate(image):
+			img_sub[i] = im
+			rms_s[i] = rms_est
 
 	observation = scarlet.Observation(
-	    img_sub,
-	    psf=scarlet.GaussianPSF(sigma=5),
-	    weights=np.ones(image.shape)/ (rms_s**2)[:,None,None],
-	    channels=list('i')).match(model_frame)
+		img_sub,
+		psf=scarlet.GaussianPSF(sigma=5),
+		weights=np.ones(image.shape)/ (rms_s**2)[:,None,None],
+		channels=list('i')).match(model_frame)
 
 	# weights=np.ones(psfs.shape)/ (rms_s[indx]**2),
 	sources, skipped = scarlet.initialization.init_all_sources(model_frame,
@@ -74,7 +74,7 @@ def scarlet_deblend(image, bkg_sub=True, rms_est = 10):
 	#     scarlet.initialization.set_spectra_to_match(sources, observation)
 	blend = scarlet.Blend(sources, observation)
 	it, logL = blend.fit(1000, e_rel=1e-4)
-    print(f"{logL} after {it} iterations")
+	if verbose: print(f"{logL} after {it} iterations")
 	# Compute model
 	model = blend.get_model()
 	# Render it in the observed frame
@@ -90,7 +90,7 @@ for i in range(100):
 		print(f"On run {i}/100")
 	ima, ims, psfs = make_gal()
 	ima.write(f'./fits/noisy1_{i}.fits')
-	_, _, _, md = scarlet_deblend(np.array([ims]))
+	_, _, _, md = scarlet_deblend(np.array([ims]), bkg_sub=False, rms_est=10)
 	scar_fin = galsim.Image(md[0], copy=True)
 	scar_fin.write(f'./fits/demo1_{i}.fits')
 
