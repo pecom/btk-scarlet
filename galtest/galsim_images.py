@@ -1,18 +1,19 @@
+#! /home/padari/python/bin/python3.8
+
 import os
 import galsim 
 import numpy as np
 import scarlet
 import sep
+from argparse import ArgumentParser
 
 
-
-def make_gal():
+def make_gal(noise):
 	# Basic run of the mill galsim properties
 	gal_flux = 1.e5
 	gal_sigma = 2.
 	psf_sigma = 1.
 	pixel_scale = 0.2
-	noise = 10.
 
 	psf_scale = psf_sigma/pixel_scale
 
@@ -85,13 +86,17 @@ def scarlet_deblend(image, bkg_sub=True, rms_est = 10, verbose=False):
 	return sources, residual, model, model_
 
 
-for i in range(100):
-	if i%10==0:
-		print(f"On run {i}/100")
-	ima, ims, psfs = make_gal()
-	ima.write(f'./fits/noisy1_{i}.fits')
-	_, _, _, md = scarlet_deblend(np.array([ims]), bkg_sub=False, rms_est=10)
-	scar_fin = galsim.Image(md[0], copy=True)
-	scar_fin.write(f'./fits/demo1_{i}.fits')
+if __name__ == "__main__":
+	parser = ArgumentParser()
+	parser.add_argument("-noise", type=int, default=10)
+	args = parser.parse_args()
+	for i in range(100):
+		if i%10==0:
+			print(f"On run {i}/100")
+		ima, ims, psfs = make_gal(args.noise)
+		ima.write(f'./fits/noisy1_{i}.fits')
+		_, _, _, md = scarlet_deblend(np.array([ims]), bkg_sub=False, rms_est=args.noise)
+		scar_fin = galsim.Image(md[0], copy=True)
+		scar_fin.write(f'./fits/demo1_{i}.fits')
 
-print("All done! Made MD")
+	print("All done! Made MD")

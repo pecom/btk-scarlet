@@ -174,7 +174,7 @@ class SingleDeblend():
 
 
 
-    def scarlet_getsources(self, image, centers, psfs, indx=3):
+    def scarlet_getsources(self, image, centers, psfs, bkg_sub=False, indx=3):
         model_psf = scarlet.GaussianPSF(sigma=(.8,)*len(image))
         model_frame = scarlet.Frame(
             image.shape,
@@ -182,10 +182,16 @@ class SingleDeblend():
             channels=self.bands)
         rms_s = np.zeros(len(image))
         img_sub = np.zeros_like(image)
-        for i,im in enumerate(image):
+
+        for i, im in enumerate(image):
             bkg = sep.Background(im)
-            img_sub[i] = im - bkg
             rms_s[i] = bkg.globalrms
+
+            if bkg_sub:
+           	img_sub[i] = im - bkg
+            else:
+                img_sub[i] = im
+
 
         observation = scarlet.Observation(
             img_sub,
@@ -207,7 +213,7 @@ class SingleDeblend():
 
     #     scarlet.initialization.set_spectra_to_match(sources, observation)
         blend = scarlet.Blend(sources, observation)
-        it, logL = blend.fit(100, e_rel=1e-4)
+        it, logL = blend.fit(1000, e_rel=1e-4)
         # Compute model
         model = blend.get_model()
         # Render it in the observed frame
