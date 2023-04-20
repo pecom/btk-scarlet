@@ -10,12 +10,17 @@ from argparse import ArgumentParser
 if __name__ == "__main__":
 	parser = ArgumentParser()
 	parser.add_argument("-noise", type=int, default=10)
+	parser.add_argument("-psf", type=float, default=5.)
+	parser.add_argument("-size", type=float, default=5.)
 	args = parser.parse_args()
 	given_rms = args.noise
+	given_psf = args.psf
+	given_gal = args.size
 	
 
 est_err = lambda rad_a, rad_b, rms, flx : np.sqrt(np.floor(rad_a * rad_b * np.pi) * rms**2 + flx)
-frads = np.array([5,10,20])
+# frads = np.array([5,10,20,22,30])
+frads = np.arange(6,70,2)
 kron_fact = 1 
 petro_fact = 1 
 # nmax = 130 
@@ -27,6 +32,10 @@ sex_keys = ['FLUX_APER', "FLUXERR_APER", 'FLUX_AUTO', 'FLUXERR_AUTO', 'FLUX_PETR
 lbl2ndx = {k:i for i,k in enumerate(sex_keys)}
 noisy_data = {sk:[] for sk in shared_keys}
 recon_data = {sk:[] for sk in shared_keys}
+
+noisy_data['bkg_rms'] = []
+recon_data['bkg_rms'] = []
+
 
 
 
@@ -40,11 +49,14 @@ for b in imtypes:
 			print(f"On run {ndx} out of {nmax}")
 
 		ndac = fits.open(f'./cats/noisy{b}_{ndx}.fits', memmap=False)
-		# bkg_rms = float(ndac[1].data[0][0][28][10:-30])
-		# if np.abs(bkg_rms - 10) > 5:
-		# 	counter += 1
-		# 	print("Bad rms estimate", counter)
+		bkg_rms = float(ndac[1].data[0][0][28][10:-30])
+#		print(f"Sextractor bkg {bkg_rms}")
+		if np.abs(bkg_rms - given_rms) > 5:
+			counter += 1
+			print("Bad rms estimate", counter)
 		bkg_rms = given_rms
+		noisy_data['bkg_rms'].append(bkg_rms)
+		recon_data['bkg_rms'].append(bkg_rms)
 		noisy_vals = [ndac[2].data[sk][0] for sk in sex_keys]
 		ndac.close()
 
@@ -63,7 +75,7 @@ for b in imtypes:
 		
 		kerr_est = est_err(im_a*krad*kron_fact, im_b*krad*kron_fact, bkg_rms, recon_flux)
 		recon_vals[3] = kerr_est
-		print(f"Krad: {krad} a: {im_a} flux: {recon_flux} kerr: {kerr_est} bkg: {bkg_rms}")
+		# print(f"Krad: {krad} a: {im_a} flux: {recon_flux} kerr: {kerr_est} bkg: {bkg_rms}")
 
 		recon_flux = recon_vals[lbl2ndx['FLUX_PETRO']]
 		prad = recon_vals[lbl2ndx['PETRO_RADIUS']]
@@ -75,7 +87,7 @@ for b in imtypes:
 
 
 noisy_frame = pd.DataFrame(data = noisy_data)
-noisy_frame.to_pickle(f"./output/galsim_noisy_sigma{given_rms}.pkl")
+noisy_frame.to_pickle(f"./output/galsim_noisy_nospectra_psf{given_psf}_sigma{given_rms}_galsize{given_gal}.pkl")
 recon_frame = pd.DataFrame(data = recon_data)
-print(f"Last kron rad: {recon_frame['kron_rad'][0]}")
-recon_frame.to_pickle(f"./output/galsim_recon_sigma{given_rms}.pkl")
+# print(f"Last kron rad: {recon_frame['kron_rad'][0]}")
+recon_frame.to_pickle(f"./output/galsim_recon_nospectra_psf{given_psf}_sigma{given_rms}_galsize{given_gal}.pkl")

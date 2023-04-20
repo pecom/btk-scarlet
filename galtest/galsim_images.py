@@ -8,11 +8,11 @@ import sep
 from argparse import ArgumentParser
 
 
-def make_gal(noise):
+def make_gal(noise, p_sigma, g_sigma):
 	# Basic run of the mill galsim properties
 	gal_flux = 1.e5
-	gal_sigma = 2.
-	psf_sigma = 1.
+	gal_sigma = g_sigma
+	psf_sigma = p_sigma
 	pixel_scale = 0.2
 
 	psf_scale = psf_sigma/pixel_scale
@@ -34,13 +34,15 @@ def sep_detect(im):
 	return cata
 
 
-def scarlet_deblend(image, bkg_sub=True, rms_est = 10, verbose=False):
-	centers = np.array([[66,66]])
+def scarlet_deblend(image, obs_sig, bkg_sub=True, rms_est = 10, verbose=False):
+	# centers = np.array([[66,66]])
+	c_pix = image.shape[1]//2
+	centers = np.array([[c_pix, c_pix]])
 	model_psf = scarlet.GaussianPSF(sigma=.8)
 	model_frame = scarlet.Frame(
-	image.shape,
-	psf=model_psf,
-	channels=list('i'))
+			image.shape,
+			psf=model_psf,
+			channels=list('i'))
 	rms_s = np.zeros(len(image))
 	img_sub = np.zeros_like(image)
 
@@ -56,7 +58,7 @@ def scarlet_deblend(image, bkg_sub=True, rms_est = 10, verbose=False):
 
 	observation = scarlet.Observation(
 		img_sub,
-		psf=scarlet.GaussianPSF(sigma=5),
+		psf=scarlet.GaussianPSF(sigma=obs_sig),
 		weights=np.ones(image.shape)/ (rms_s**2)[:,None,None],
 		channels=list('i')).match(model_frame)
 
@@ -69,7 +71,7 @@ def scarlet_deblend(image, bkg_sub=True, rms_est = 10, verbose=False):
 							       thresh=1,
 							       fallback=False,
 							       silent=True,
-							       set_spectra=True
+							       set_spectra=False
 							      )
 
 	#     scarlet.initialization.set_spectra_to_match(sources, observation)
@@ -89,14 +91,23 @@ def scarlet_deblend(image, bkg_sub=True, rms_est = 10, verbose=False):
 if __name__ == "__main__":
 	parser = ArgumentParser()
 	parser.add_argument("-noise", type=int, default=10)
+	parser.add_argument("-psf", type=float, default=5.)
+	parser.add_argument("-size", type=float, default=5.)
 	args = parser.parse_args()
-	for i in range(100):
+	N = 100
+	for i in range(N):
 		if i%10==0:
-			print(f"On run {i}/100")
-		ima, ims, psfs = make_gal(args.noise)
+			print(f"On run {i}/{N}")
+		run_psf = args.psf/10
+		pix_psf = run_psf/.2
+		if i==0:
+			print(f"Running with params {args.noise} {run_psf} {args.size}")
+		ima, ims, psfs = make_gal(args.noise, run_psf, args.size)
 		ima.write(f'./fits/noisy1_{i}.fits')
-		_, _, _, md = scarlet_deblend(np.array([ims]), bkg_sub=False, rms_est=args.noise)
+		_, res, _, md = scarlet_deblend(np.array([ims]), pix_psf, bkg_sub=False, rms_est=args.noise)
 		scar_fin = galsim.Image(md[0], copy=True)
 		scar_fin.write(f'./fits/demo1_{i}.fits')
+		scar_res = galsim.Image(res[0], copy=True)
+		scar_res.write(f'./fits/resid1_{i}.fits')
 
 	print("All done! Made MD")
