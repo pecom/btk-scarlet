@@ -1,4 +1,3 @@
-#! /home/padari/python/bin/python3.8
 # -*- coding: utf-8 -*-
 # Author : Prakruth Adari
 # Email : prakruth.adari@stonybrook.edu
