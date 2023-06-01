@@ -1,0 +1,18 @@
+NUMBER                   # Running object number  
+FLUX_APER[5]                # Flux vector within fixed circular aperture(s)             [count]
+FLUXERR_APER[5]             # RMS error vector for aperture flux(es)                    [count]
+FLUX_AUTO		 # Automatic photometry using Kron radius		     [count]
+FLUXERR_AUTO		 # RMS error vector when using Kron radius		     [count]
+FLUX_PETRO		 # Petrosian photometry					     [count]
+FLUXERR_PETRO		 # RMS error vector on Petrosian photometry		     [count]
+FWHM_IMAGE               # FWHM assuming a gaussian core                             [pixel]
+FLUX_MAX                 # Peak flux above background                                [count]
+ISOAREA_IMAGE            # Isophotal area above Analysis threshold                   [pixel**2]
+A_IMAGE			 # Major axis						     [pixel]
+B_IMAGE			 # Minor axis						     [pixel]
+FLAGS                    # Extraction flags                                         
+FLUX_RADIUS		 # 							     [pixel]
+KRON_RADIUS		 # k*r_kron with k=2.5					     [pixel]
+PETRO_RADIUS		 # N*r_p with N=2 					     [pixel]		 
+X_IMAGE			 # x-coord in image					     [pixel]
+Y_IMAGE			 # y-coord in image					     [pixel]

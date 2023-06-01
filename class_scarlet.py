@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#! /home/padari/python/bin/python3.8
 # -*- coding: utf-8 -*-
 # Author : Prakruth Adari
 # Email : prakruth.adari@stonybrook.edu
@@ -30,7 +30,8 @@ import astropy.visualization
 from scarlet.display import AsinhMapping
 from galcheat.utilities import mag2counts
 
-from sklearn.cluster import KMeans
+# from sklearn.cluster import KMeans
+from argparse import ArgumentParser
 import pickle
 import sys
 
@@ -129,12 +130,15 @@ class SingleDeblend():
         )
         return cata, seg
 
-    def __init__(self, noisy, psf, scardict={}, indx=3):
+    def __init__(self, noisy, psf, scardict={}, indx=3, scarn = 1):
        self.noisy = noisy
+       assert(self.noisy.shape == (6,120,120)) # Hard coded image shapes from BTK 
+					       # Only matters for the center fixing later on
        self.bands = list('ugrizy')
        self.indx = indx
        self.psfs = psf
        self.cata, self.seg = self.get_sepcat(noisy)
+       self.scarlet_n = scarn
 
     def comp_flux(self, sources):
         scarlet_flux = scarlet.measure.flux(sources[0])
@@ -188,7 +192,7 @@ class SingleDeblend():
             rms_s[i] = bkg.globalrms
 
             if bkg_sub:
-           	img_sub[i] = im - bkg
+                img_sub[i] = im - bkg
             else:
                 img_sub[i] = im
 
@@ -203,12 +207,12 @@ class SingleDeblend():
         sources, skipped = scarlet.initialization.init_all_sources(model_frame,
                                                                centers,
                                                                observation,
-                                                               max_components=2,
-                                                               min_snr=5,
+                                                               max_components=self.scarlet_n,
+                                                               min_snr=50,
                                                                thresh=1,
                                                                fallback=True,
                                                                silent=True,
-                                                               set_spectra=True
+                                                               set_spectra=False
                                                               )
 
     #     scarlet.initialization.set_spectra_to_match(sources, observation)
@@ -228,7 +232,7 @@ class SingleDeblend():
         return ellipse
 
     def pipeline(self, im, psfs):
-        all_centers = np.array([[59,59]])
+        all_centers = np.array([[59,59]]) # TO-DO: Make this more flexible!
         sc, res, mod, obs = self.scarlet_getsources(im, all_centers, psfs)
         sf = self.comp_flux(sc)
         # kflux = self.kron_flux(mod)
@@ -333,7 +337,7 @@ def compare_flux(solved, true):
     
     return ratios, err
 
-def main_single(df, shift=4, saveFiles=True, verbose=False):
+def main_single(df, shift=4, saveFiles=True, verbose=False, scale_size=1, scar_N=1):
     catalog_name = "../data/sample_input_catalog.fits"
     stamp_size = 24
     bsize = 10
@@ -341,6 +345,10 @@ def main_single(df, shift=4, saveFiles=True, verbose=False):
     bands = list('ugrizy')
 
     catalog = btk.catalog.CatsimCatalog.from_file(catalog_name)
+    catalog.table['a_d'] *= scale_size
+    catalog.table['b_d'] *= scale_size
+    catalog.table['a_b'] *= scale_size
+    catalog.table['b_b'] *= scale_size
     # sampling_function = btk.sampling_functions.DefaultSampling(max_number=5)
     sampling_function = CenteredSampling(setndx=shift)
     draw_blend_generator = btk.draw_blends.CatsimGenerator(
@@ -358,6 +366,7 @@ def main_single(df, shift=4, saveFiles=True, verbose=False):
 
     batch = next(draw_blend_generator)
     blend_images = batch['blend_images']
+    assert(blend_images[0][0].shape==(120,120))
     blend_list = batch['blend_list']
     blend_iso = batch['isolated_images']
 
@@ -369,7 +378,7 @@ def main_single(df, shift=4, saveFiles=True, verbose=False):
     for bs in range(bsize):
         noisy_im = blend_images[bs]
         noiseless_im = blend_iso[bs][0]
-        sblend = SingleDeblend(noisy_im, psfs)
+        sblend = SingleDeblend(noisy_im, psfs, scarn=scar_N)
         true_flux = sblend.lsst_mags_adu(true_mags, bands, suvy)
         res = sblend.get_deblend()
         # print(res, true_flux)
@@ -413,6 +422,7 @@ def main_double(df, shift=4, saveFiles=True, verbose=False):
 
     batch = next(draw_blend_generator)
     blend_images = batch['blend_images']
+    assert(blend_images[0][0].shape==(120,120))
     blend_list = batch['blend_list']
     blend_iso = batch['isolated_images']
 
@@ -442,8 +452,14 @@ def main_double(df, shift=4, saveFiles=True, verbose=False):
 
     return 1
 if __name__ == "__main__":
+    parser = ArgumentParser()
+    parser.add_argument("mode", choices=["SINGLE", "DOUBLE"])
+    parser.add_argument("-size", type=int, default=1)
+    parser.add_argument("-n", type=int, default=1)
+    args = parser.parse_args()
     # allshifts = np.array([ 0,  6, 21, 24, 36, 38, 43, 54, 61, 76, 87, 96, 98])
-    allshifts = np.array([ 0,  6, 21, 24, 36, 38])
+    # allshifts = np.array([ 0,  6, 21, 24, 36, 38])
+    allshifts = np.array([76, 61, 54, 24, 0, 6])
     # allshifts = np.array([88,75,56,41,49,77])
     lalls = len(allshifts)
     all_ratios = np.zeros((lalls, 6))
@@ -458,13 +474,14 @@ if __name__ == "__main__":
     dframe_double = {sk:[] for sk in dframe_keys}
     for i, sft in enumerate(allshifts):
         print(f"Processing index {i} object number {sft}")
-        kale = main_single(dframe_solo, sft)
-        print("Done with main single")
-        # cabbage = main_double(dframe_double, sft)
+        if args.mode=="SINGLE":
+            kale = main_single(dframe_solo, sft, scale_size=args.size, scar_N=args.n)
+        if args.mode=="DOUBLE":
+            cabbage = main_double(dframe_double, sft)
 
     # remove(all_trues)
     # remove("sys exit now")
-    prefix = "testSNR5_bkgsub_spectra_"
+    prefix = f"testSNR50_n{args.n}scale{args.size}_"
     fullframe_solo = pd.DataFrame(data=dframe_solo)
     fullframe_solo.to_pickle(f'../output/{prefix}pandaframe_solo.pkl')
 

@@ -28,7 +28,7 @@
 
 for i in 1 2 5 10 20 30
 do
-	./galsim_images.py -noise $i -psf 4 -size .64
+	./galsim_images.py -noise $i -psf 10 -size 2
 	./galsim_proc.py
-	./galsim_finform.py -noise $i -psf 4 -size .64
+	./galsim_finform.py -noise $i -psf 10 -size 2
 done

@@ -1,4 +1,5 @@
-# btk-scarletNOTE: On jamaica we are just using python3 not python or any virtual environment
+# btk-scarlet
+NOTE: On jamaica we are just using python3 not python or any virtual environment
 
 1. Run class_scarlet.py to generate a pandas object
 	- Generates sample images with BTK + Input Catalog

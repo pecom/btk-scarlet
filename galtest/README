@@ -1,0 +1,10 @@
+1. galsim_images 
+	Generate Images
+2. galsim_proc 
+	Run SExtractor
+3. galsim_finform
+	Process results into a pandas array
+
+------------------------------------------------------------------------------------
+post/gal2np writes some of the scarlet reconstructions to numpy arrays
+post/quickstats calculates finite aperture and infinite aperture photomoetry on fits images
