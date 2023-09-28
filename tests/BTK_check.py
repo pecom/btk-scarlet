@@ -15,6 +15,9 @@ import btk.catalog
 import btk.sampling_functions
 
 import scarlet
+import os
+ddir = os.getenv("DATADIR")
+odir = os.getenv("OUTDIR")
 
 class CenteredSampling(btk.sampling_functions.SamplingFunction):
 
@@ -48,7 +51,7 @@ class CenteredSampling(btk.sampling_functions.SamplingFunction):
         return blend_table
 
 
-catalog_name = "../../data/input_catalog.fits"
+catalog_name = f"{ddir}/input_catalog.fits"
 catalog = btk.catalog.CatsimCatalog.from_file(catalog_name)
 LSST = btk.survey.get_surveys("LSST")
 allndx = np.array([76, 61, 54, 24, 0, 6])
@@ -85,7 +88,7 @@ for ndx in allndx:
     boot_err = np.array([np.std(stats.bootstrap([rf], np.mean).bootstrap_distribution)
                       for rf in realization_flux.T])
     fname_prefix = f'galaxy{ndx}_'
-    np.save(f'../../output/btk_tests/{fname_prefix}truth', full_flux)
-    np.save(f'../../output/btk_tests/{fname_prefix}realizations', realization_flux)
-    np.save(f'../../output/btk_tests/{fname_prefix}scarlet', scarlet_flux)
-    np.save(f'../../output/btk_tests/{fname_prefix}err', boot_err)
+    np.save(f'{odir}/btk_tests/{fname_prefix}truth', full_flux)
+    np.save(f'{odir}/btk_tests/{fname_prefix}realizations', realization_flux)
+    np.save(f'{odir}/btk_tests/{fname_prefix}scarlet', scarlet_flux)
+    np.save(f'{odir}/btk_tests/{fname_prefix}err', boot_err)
