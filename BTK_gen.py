@@ -1,3 +1,4 @@
+#! /home/padari/python/bin/python3.8
 from abc import ABC, abstractmethod
 
 import astropy.table
@@ -13,6 +14,7 @@ import btk.survey
 import btk.draw_blends
 import btk.catalog
 import btk.sampling_functions
+from argparse import ArgumentParser
 
 import scarlet
 import os
@@ -59,13 +61,19 @@ class CenteredSampling(btk.sampling_functions.SamplingFunction):
         return blend_table
 
 
+if __name__ == "__main__":
+	parser = ArgumentParser()
+	parser.add_argument("-n", type=int)
+	args = parser.parse_args()
+	nsize = args.n
+
 catalog_name = f"{ddir}/input_catalog.fits"
 catalog = btk.catalog.CatsimCatalog.from_file(catalog_name)
 LSST = btk.survey.get_surveys("LSST")
 print(f"Cat length: {len(catalog.table)}")
 # allndx = np.array([76, 61, 54, 24, 0, 6])
 # allndx = np.array([76])
-allndx = rng.choice(len(catalog.table), size=5)
+allndx = rng.choice(len(catalog.table), size=nsize)
 batch_size = 10
 stamp_size = 24.0  # Size of the stamp, in arcseconds
 
@@ -108,7 +116,7 @@ for idx, ndx in enumerate(allndx):
                       for rf in real_flux.T]))
 
 
-fname_prefix = f'check1_'
+fname_prefix = f'bigrun_'
 full_flux = np.array(full_flux)
 realization_flux = np.array(realization_flux)
 scarlet_flux = np.array(scarlet_flux)
